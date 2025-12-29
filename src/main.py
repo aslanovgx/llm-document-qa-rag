@@ -14,8 +14,6 @@ from src.vectorstore.faiss_store import (
     load_index,
     load_metadata,
 )
-from src.rag.retriever import retrieve_top_k
-
 
 from src.rag.pipeline import RAGPipeline
 from src.llm.hf_client import HFClient
@@ -40,6 +38,10 @@ def ingest(
     print("[bold]Chunking...[/bold]")
     chunks_text = chunk_text(text, chunk_size=chunk_size, overlap=overlap)
 
+    if not chunks_text:
+        print("[red]No text extracted from file.[/red]")
+        raise typer.Exit(code=1)
+
     chunks = [
         Chunk(id=i, text=t, source=Path(path).name)
         for i, t in enumerate(chunks_text)
@@ -58,17 +60,26 @@ def ingest(
     save_metadata(chunks, settings.metadata_path)
 
     print("[green][OK][/green] Ingestion completed.")
+    print(f"[dim]Index:[/dim] {settings.faiss_index_path}")
+    print(f"[dim]Metadata:[/dim] {settings.metadata_path}")
 
 # ---------------- ASK ----------------
 @app.command()
 def ask(
     question: str = typer.Option(..., "--question", "-q", help="User question"),
 ):
+    index_path = Path(settings.faiss_index_path)
+    meta_path = Path(settings.metadata_path)
+
+    if not index_path.exists() or not meta_path.exists():
+        print("[red]Index/metadata not found. Run ingest first.[/red]")
+        raise typer.Exit(code=1)
+
     index = load_index(settings.faiss_index_path)
     chunks = load_metadata(settings.metadata_path)
 
     embedder = HFEmbedder(settings.hf_model_name)
-    llm = HFClient()  # ✅ local, free
+    llm = HFClient()  # local/free LLM
 
     rag = RAGPipeline(
         index=index,
@@ -83,12 +94,11 @@ def ask(
     print("\n[bold green]Answer:[/bold green]")
     print(answer)
 
-    print("\n[bold]Sources (top-k chunks) [rerank score]:[/bold]")
+    print("\n[bold]Sources (top-k chunks) [score]:[/bold]")
     for i, (chunk, score) in enumerate(retrieved, 1):
         print(f"[cyan]#{i} | score={score:.3f} | source={chunk.source}[/cyan]")
         print(chunk.text[:300] + ("..." if len(chunk.text) > 300 else ""))
         print("-" * 80)
-        
 
 if __name__ == "__main__":
     app()

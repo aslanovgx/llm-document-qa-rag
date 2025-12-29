@@ -5,631 +5,262 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RAG Document Q&A</title>
+
     <style>
-        :root {
-            --bg: #0b1020;
-            --panel: #111a33;
-            --panel2: #0f1730;
-            --text: #e8eeff;
-            --muted: #a9b5d6;
-            --accent: #4f7cff;
-            --ok: #37d67a;
-            --bad: #ff5c7a;
-            --border: rgba(255, 255, 255, .08);
-            --shadow: 0 10px 35px rgba(0, 0, 0, .35);
-            --radius: 18px;
-            --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-            --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-        }
-
-        * {
-            box-sizing: border-box
-        }
-
         body {
+            background: #0b1020;
+            color: #e8eeff;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
             margin: 0;
-            font-family: var(--sans);
-            background: radial-gradient(1200px 700px at 20% 10%, rgba(79, 124, 255, .18), transparent 60%),
-                radial-gradient(900px 600px at 80% 30%, rgba(55, 214, 122, .12), transparent 60%),
-                var(--bg);
-            color: var(--text);
         }
 
         .wrap {
-            max-width: 1080px;
-            margin: 38px auto;
-            padding: 0 18px
-        }
-
-        h1 {
-            margin: 0 0 6px;
-            font-size: 36px;
-            letter-spacing: .2px
-        }
-
-        .sub {
-            color: var(--muted);
-            margin: 0 0 22px
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 0 16px
         }
 
         .card {
-            background: linear-gradient(180deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .02));
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-            padding: 18px;
-            margin: 14px 0;
+            background: #111a33;
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 16px
         }
 
-        .row {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            align-items: center
+        h1 {
+            margin: 0 0 6px
         }
 
-        .row>* {
-            flex: 1
+        .sub {
+            color: #a9b5d6;
+            margin-bottom: 20px
         }
 
         label {
-            display: block;
             font-size: 13px;
-            color: var(--muted);
-            margin-bottom: 8px
+            color: #a9b5d6
         }
 
-        input[type="text"],
+        input,
         textarea {
             width: 100%;
-            padding: 12px 12px;
-            border-radius: 14px;
-            border: 1px solid var(--border);
-            background: rgba(10, 15, 30, .55);
-            color: var(--text);
-            outline: none;
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid #2a355a;
+            background: #0f1730;
+            color: #e8eeff
         }
 
         textarea {
-            min-height: 92px;
-            resize: vertical
+            min-height: 90px
         }
 
-        .btn {
-            flex: 0 0 auto;
-            padding: 12px 16px;
-            border-radius: 14px;
-            border: 1px solid rgba(79, 124, 255, .35);
-            background: rgba(79, 124, 255, .18);
-            color: var(--text);
+        button {
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid #4f7cff;
+            background: #223a7a;
+            color: white;
             font-weight: 600;
-            cursor: pointer;
-            transition: .15s;
-            user-select: none;
-        }
-
-        .btn:hover {
-            transform: translateY(-1px);
-            background: rgba(79, 124, 255, .24)
-        }
-
-        .btn:disabled {
-            opacity: .55;
-            cursor: not-allowed;
-            transform: none
-        }
-
-        .btn.secondary {
-            border: 1px solid var(--border);
-            background: rgba(255, 255, 255, .06);
-        }
-
-        .hint {
-            color: var(--muted);
-            font-size: 13px;
-            margin-top: 6px
-        }
-
-        .pill {
-            display: inline-flex;
-            gap: 8px;
-            align-items: center;
-            border: 1px solid var(--border);
-            background: rgba(255, 255, 255, .04);
-            padding: 6px 10px;
-            border-radius: 999px;
-            font-size: 12px;
-            color: var(--muted)
-        }
-
-        .statusDot {
-            width: 9px;
-            height: 9px;
-            border-radius: 999px;
-            background: #666;
-            display: inline-block
-        }
-
-        .statusDot.ok {
-            background: var(--ok)
-        }
-
-        .statusDot.bad {
-            background: var(--bad)
-        }
-
-        .mono {
-            font-family: var(--mono)
-        }
-
-        .grid2 {
-            display: grid;
-            grid-template-columns: 1.2fr .8fr;
-            gap: 14px
-        }
-
-        @media (max-width: 860px) {
-            .grid2 {
-                grid-template-columns: 1fr
-            }
-        }
-
-        .toast {
-            position: fixed;
-            right: 18px;
-            bottom: 18px;
-            z-index: 9999;
-            padding: 12px 14px;
-            border-radius: 14px;
-            border: 1px solid var(--border);
-            background: rgba(17, 26, 51, .92);
-            box-shadow: var(--shadow);
-            display: flex;
-            gap: 10px;
-            align-items: flex-start;
-            max-width: 460px
-        }
-
-        .toast .tTitle {
-            font-weight: 700;
-            margin: 0 0 2px
-        }
-
-        .toast .tMsg {
-            margin: 0;
-            color: var(--muted);
-            font-size: 13px;
-            line-height: 1.35
-        }
-
-        .toast .x {
-            margin-left: auto;
-            background: transparent;
-            border: none;
-            color: var(--muted);
             cursor: pointer
         }
 
-        .toast.ok {
-            border-color: rgba(55, 214, 122, .35)
+        button:disabled {
+            opacity: .6;
+            cursor: not-allowed
         }
 
-        .toast.bad {
-            border-color: rgba(255, 92, 122, .35)
-        }
-
-        .spinner {
-            width: 16px;
-            height: 16px;
-            border-radius: 999px;
-            border: 2px solid rgba(255, 255, 255, .25);
-            border-top-color: rgba(255, 255, 255, .9);
-            animation: spin .7s linear infinite;
-            display: inline-block
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg)
-            }
+        .hint {
+            font-size: 12px;
+            color: #a9b5d6;
+            margin-top: 6px
         }
 
         .answerBox {
-            border: 1px solid var(--border);
-            background: rgba(10, 15, 30, .45);
-            border-radius: 16px;
-            padding: 14px;
+            white-space: pre-wrap;
             margin-top: 10px;
-            white-space: pre-wrap;
-        }
-
-        .answerSections {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 10px
-        }
-
-        .section {
-            border: 1px solid var(--border);
-            background: rgba(255, 255, 255, .03);
-            border-radius: 14px;
+            background: #0f1730;
             padding: 12px;
-        }
-
-        .section h3 {
-            margin: 0 0 8px;
-            font-size: 13px;
-            color: var(--muted);
-            font-weight: 700
-        }
-
-        .section .content {
-            white-space: pre-wrap;
-            line-height: 1.45
+            border-radius: 10px
         }
 
         details {
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            background: rgba(10, 15, 30, .45);
-            padding: 10px 12px;
+            background: #0f1730;
+            padding: 10px;
+            border-radius: 10px;
+            margin-top: 8px
         }
 
         summary {
             cursor: pointer;
-            color: var(--text);
             font-weight: 700
         }
 
-        .sourceMeta {
-            color: var(--muted);
-            font-size: 12px;
-            margin: 6px 0 10px
+        .mono {
+            font-family: monospace
         }
 
-        .copyBtn {
-            border: 1px solid var(--border);
-            background: rgba(255, 255, 255, .06);
-            color: var(--text);
-            border-radius: 12px;
-            padding: 8px 10px;
-            cursor: pointer;
-            font-size: 12px;
+        .spinner {
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255, 255, 255, .3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 6px;
         }
 
-        .sourceText {
-            color: var(--text);
-            white-space: pre-wrap;
-            line-height: 1.45
-        }
-
-        .topbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
         }
     </style>
 </head>
 
 <body>
     <div class="wrap">
-        <div class="topbar">
-            <div>
-                <h1>RAG Document Q&A</h1>
-                <p class="sub">Upload a PDF/TXT → ask a question → get grounded answers with sources.</p>
-            </div>
-            <div class="pill" id="healthPill">
-                <span class="statusDot" id="healthDot"></span>
-                <span class="mono" id="healthText">Not checked</span>
-            </div>
-        </div>
+        <h1>RAG Document Q&A</h1>
+        <p class="sub">Upload a document → ask questions → refresh clears memory.</p>
 
+        <!-- API -->
         <div class="card">
-            <div class="row">
-                <div style="min-width:280px">
-                    <label>API Base URL</label>
-                    <input id="baseUrl" type="text" placeholder="http://127.0.0.1:8000" />
-                    <div class="hint">Tip: if Docker runs elsewhere, update this URL. Saved automatically.</div>
-                </div>
-                <div style="flex:0 0 auto">
-                    <label>&nbsp;</label>
-                    <button class="btn" id="btnHealth">Check /health</button>
-                </div>
-            </div>
+            <label>API Base URL</label>
+            <input id="baseUrl" placeholder="http://127.0.0.1:8000" />
+            <div class="hint">Saved locally (only this).</div>
         </div>
 
-        <div class="grid2">
-            <div class="card">
-                <h2 style="margin:0 0 10px;font-size:18px">1) Upload PDF/TXT (Ingest)</h2>
-                <div class="row">
-                    <div>
-                        <label>Choose file</label>
-                        <input id="fileInput" type="file" accept=".pdf,.txt" />
-                        <div class="hint" id="fileHint">No file selected</div>
-                    </div>
-                    <div style="flex:0 0 auto">
-                        <label>&nbsp;</label>
-                        <button class="btn" id="btnIngest">Ingest</button>
-                    </div>
-                </div>
-                <div class="hint" id="ingestResult"></div>
-            </div>
-
-            <div class="card">
-                <h2 style="margin:0 0 10px;font-size:18px">2) Ask a question</h2>
-                <label>Your question</label>
-                <div class="row">
-                    <input id="question" type="text" placeholder="What is Unsupervised Learning?" />
-                    <button class="btn" id="btnAsk">Ask</button>
-                </div>
-                <div class="hint" id="askHint">Make sure you ingested the right document first.</div>
-
-                <div id="answerWrap" style="display:none">
-                    <div class="answerSections" style="margin-top:12px">
-
-                        <div class="section">
-                            <h3>Answer</h3>
-                            <div class="content" id="answerText"></div>
-                        </div>
-
-                        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
-                            <button class="btn secondary" id="toggleSteps">Show steps</button>
-                            <button class="btn secondary" id="toggleSources">Show sources</button>
-                        </div>
-
-                        <div class="section" id="stepsSection" style="display:none; margin-top:10px;">
-                            <h3>Steps</h3>
-                            <div id="stepsList" style="display:flex;flex-direction:column;gap:10px"></div>
-                        </div>
-
-                        <div class="section" id="sourcesSection" style="display:none;">
-                            <h3>Sources</h3>
-                            <div id="sourcesList" style="display:flex;flex-direction:column;gap:10px"></div>
-                            <div class="hint" style="margin-top:10px">
-                                Tip: Run <span class="mono">/ingest</span> first, then <span class="mono">/ask</span>.
-                                First model download may take time.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <!-- INGEST -->
+        <div class="card">
+            <h3>1) Ingest PDF / TXT</h3>
+            <input id="fileInput" type="file" accept=".pdf,.txt" />
+            <button id="btnIngest">Ingest</button>
+            <div class="hint" id="ingestInfo"></div>
         </div>
 
+        <!-- ASK -->
+        <div class="card">
+            <h3>2) Ask Question</h3>
+            <input id="question" placeholder="What are the limitations of LLMs?" />
+            <button id="btnAsk">Ask</button>
+            <div class="answerBox" id="answerBox" style="display:none"></div>
+
+            <details id="stepsBox" style="display:none">
+                <summary>Steps</summary>
+                <div id="steps"></div>
+            </details>
+
+            <details id="sourcesBox" style="display:none">
+                <summary>Sources</summary>
+                <div id="sources"></div>
+            </details>
+        </div>
     </div>
 
     <script>
-        const btnSources = document.getElementById("toggleSources");
-        const btnSteps = document.getElementById("toggleSteps");
-        const sources = document.getElementById("sourcesSection");
-        const steps = document.getElementById("stepsSection");
+        /* ---------------- STATE ---------------- */
+        let CURRENT_DOC_ID = null;
 
-        btnSources.addEventListener("click", () => {
-            const hidden = sources.style.display === "none";
-            sources.style.display = hidden ? "block" : "none";
-            btnSources.textContent = hidden ? "Hide sources" : "Show sources";
-        });
-
-        btnSteps.addEventListener("click", () => {
-            const hidden = steps.style.display === "none";
-            steps.style.display = hidden ? "block" : "none";
-            btnSteps.textContent = hidden ? "Hide steps" : "Show steps";
-        });
-    </script>
-
-    <script>
+        /* ---------------- HELPERS ---------------- */
         const $ = (id) => document.getElementById(id);
+        function toast(msg) { alert(msg); }
 
-        // ---------- localStorage base URL ----------
-        const baseUrlInput = $("baseUrl");
-        const saved = localStorage.getItem("rag_api_base");
-        baseUrlInput.value = saved || "http://127.0.0.1:8000";
-        baseUrlInput.addEventListener("input", () => {
-            localStorage.setItem("rag_api_base", baseUrlInput.value.trim());
-        });
+        /* ---------------- BASE URL ---------------- */
+        const baseInput = $("baseUrl");
+        baseInput.value = localStorage.getItem("rag_base") || "http://127.0.0.1:8000";
+        baseInput.oninput = () => localStorage.setItem("rag_base", baseInput.value.trim());
 
-        // ---------- Toast ----------
-        function toast(type, title, msg) {
-            const div = document.createElement("div");
-            div.className = `toast ${type}`;
-            div.innerHTML = `
-      <div class="statusDot ${type}"></div>
-      <div>
-        <p class="tTitle">${title}</p>
-        <p class="tMsg">${msg}</p>
-      </div>
-      <button class="x" aria-label="Close">✕</button>
-    `;
-            div.querySelector(".x").onclick = () => div.remove();
-            document.body.appendChild(div);
-            setTimeout(() => { if (div.isConnected) div.remove(); }, 4500);
-        }
+        /* ---------------- INGEST ---------------- */
+        $("btnIngest").onclick = async () => {
+            const file = $("fileInput").files[0];
+            if (!file) { toast("Choose a PDF/TXT"); return; }
 
-        // ---------- Health ----------
-        const healthDot = $("healthDot");
-        const healthText = $("healthText");
-        $("btnHealth").addEventListener("click", async () => {
-            const base = baseUrlInput.value.trim().replace(/\/$/, "");
-            $("btnHealth").disabled = true;
-            $("btnHealth").innerHTML = `<span class="spinner"></span> Checking...`;
-            try {
-                const res = await fetch(`${base}/health`);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
-                healthDot.className = "statusDot ok";
-                healthText.textContent = data.status || "ok";
-                toast("ok", "Health OK", "Backend is reachable.");
-            } catch (e) {
-                healthDot.className = "statusDot bad";
-                healthText.textContent = "offline";
-                toast("bad", "Health Failed", String(e));
-            } finally {
-                $("btnHealth").disabled = false;
-                $("btnHealth").textContent = "Check /health";
-            }
-        });
+            const base = baseInput.value.replace(/\/$/, "");
+            const fd = new FormData();
+            fd.append("file", file);
 
-        // ---------- Ingest ----------
-        const fileInput = $("fileInput");
-        fileInput.addEventListener("change", () => {
-            $("fileHint").textContent = fileInput.files?.[0]?.name ? `Selected: ${fileInput.files[0].name}` : "No file selected";
-        });
+            const ingestBtn = $("btnIngest");
+            const ingestText = ingestBtn.textContent;
 
-        $("btnIngest").addEventListener("click", async () => {
-            const base = baseUrlInput.value.trim().replace(/\/$/, "");
-            const file = fileInput.files?.[0];
-            if (!file) {
-                toast("bad", "No file", "Choose a .pdf or .txt first.");
-                return;
-            }
-
-            $("btnIngest").disabled = true;
-            $("btnIngest").innerHTML = `<span class="spinner"></span> Ingesting...`;
-            $("ingestResult").textContent = "";
+            ingestBtn.disabled = true;
+            ingestBtn.innerHTML = `<span class="spinner"></span> Ingesting...`;
 
             try {
-                const form = new FormData();
-                form.append("file", file);
+                const r = await fetch(`${base}/ingest`, { method: "POST", body: fd });
+                const d = await r.json();
+                if (!r.ok) throw d.detail;
 
-                const res = await fetch(`${base}/ingest`, { method: "POST", body: form });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data?.detail || `HTTP ${res.status}`);
+                CURRENT_DOC_ID = d.doc_id;
+                $("ingestInfo").innerHTML =
+                    `✅ Ingested <span class="mono">${d.file}</span> • chunks: ${d.chunks}`;
 
-                $("ingestResult").innerHTML = `✅ Ingested <span class="mono">${data.file || file.name}</span> • chunks: <b>${data.chunks ?? "?"}</b>`;
-                toast("ok", "Ingest OK", `File: ${data.file || file.name} • chunks: ${data.chunks ?? "?"}`);
             } catch (e) {
-                $("ingestResult").textContent = "❌ Ingest failed.";
-                toast("bad", "Ingest Failed", String(e));
+                toast("Ingest failed: " + e);
             } finally {
-                $("btnIngest").disabled = false;
-                $("btnIngest").textContent = "Ingest";
+                ingestBtn.disabled = false;
+                ingestBtn.textContent = ingestText;
             }
-        });
+        };
 
+        /* ---------------- PARSE ANSWER ---------------- */
+        function parseAnswer(text) {
+            const def = text.match(/Definition:\s*([\s\S]*?)(?=\nSteps:|$)/i);
+            const steps = text.match(/Steps:\s*([\s\S]*)/i);
 
-        function parseRagAnswer(raw) {
-  const text = (raw || "").replace(/\r/g, "").trim();
-
-  // Definition: ... (until Steps/Sources)
-  const defMatch = text.match(/Definition:\s*([\s\S]*?)(?=\nSteps:|\nSources:|$)/i);
-  const definition = defMatch ? defMatch[1].trim() : text;
-
-  // Steps: ... (until Sources or end)
-  const stepsMatch = text.match(/Steps:\s*([\s\S]*?)(?=\nSources:|$)/i);
-  const stepsBlock = stepsMatch ? stepsMatch[1].trim() : "";
-
-  // normalize steps lines:
-  // supports "- ..." or "1) ..." or "• ..."
-  const steps = stepsBlock
-    ? stepsBlock
-        .split("\n")
-        .map(s => s.trim())
-        .filter(Boolean)
-        .map(s => s.replace(/^[-•]\s*/, "").replace(/^\d+[\).]\s*/, ""))
-        .filter(Boolean)
-    : [];
-
-  return { definition, steps };
-}
-
-function renderSteps(stepsArr) {
-  const list = $("stepsList");
-  list.innerHTML = "";
-
-  if (!stepsArr || stepsArr.length === 0) {
-    list.innerHTML = `<div class="section" style="background:rgba(255,255,255,.03)">No steps available.</div>`;
-    return;
-  }
-
-  stepsArr.forEach((step, i) => {
-    const d = document.createElement("details");
-    d.open = i === 0;
-
-    // UX: short title (first 60 chars), full text in body
-    const title = step.length > 60 ? step.slice(0, 60) + "..." : step;
-
-    d.innerHTML = `
-      <summary>Step ${i + 1} • ${title}</summary>
-      <div class="sourceMeta">What happens:</div>
-      <div class="sourceText">${step.replaceAll("<","&lt;").replaceAll(">","&gt;")}</div>
-    `;
-    list.appendChild(d);
-  });
-}
-
-
-
-        // ---------- Ask ----------
-        function renderSources(sources) {
-            const list = $("sourcesList");
-            list.innerHTML = "";
-
-            (sources || []).forEach((s, idx) => {
-                const d = document.createElement("details");
-                d.open = idx === 0; // first open
-                const safePreview = (s.text_preview || "").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
-                d.innerHTML = `
-        <summary>#${idx + 1} • id=${s.id} • source=${s.source} • score=${Number(s.score).toFixed(3)}</summary>
-        <div class="sourceMeta mono">chunk_id=${s.id} • file=${s.source}</div>
-        <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">
-          <button class="copyBtn">Copy preview</button>
-          <span class="hint">Preview is truncated.</span>
-        </div>
-        <div class="sourceText">${safePreview}</div>
-      `;
-                d.querySelector(".copyBtn").onclick = async () => {
-                    await navigator.clipboard.writeText(s.text_preview || "");
-                    toast("ok", "Copied", "Source preview copied to clipboard.");
-                };
-                list.appendChild(d);
-            });
+            return {
+                answer: def ? def[1].trim() : text,
+                steps: steps
+                    ? steps[1].split("\n").map(s => s.replace(/^[-•\d.)]+\s*/, "").trim()).filter(Boolean)
+                    : []
+            };
         }
 
-        $("btnAsk").addEventListener("click", async () => {
-            const base = baseUrlInput.value.trim().replace(/\/$/, "");
+        /* ---------------- ASK ---------------- */
+        $("btnAsk").onclick = async () => {
             const q = $("question").value.trim();
-            if (!q) {
-                toast("bad", "No question", "Write a question first.");
+            if (!q) { toast("Write a question"); return; }
+            if (!CURRENT_DOC_ID) {
+                toast("First ingest a document. Refresh clears memory.");
                 return;
             }
 
-            $("btnAsk").disabled = true;
-            $("btnAsk").innerHTML = `<span class="spinner"></span> Asking...`;
-            $("answerWrap").style.display = "none";
+            const base = baseInput.value.replace(/\/$/, "");
+            const askBtn = $("btnAsk");
+            const askText = askBtn.textContent;
+
+            askBtn.disabled = true;
+            askBtn.innerHTML = `<span class="spinner"></span> Asking...`;
 
             try {
-                const res = await fetch(`${base}/ask`, {
+                const r = await fetch(`${base}/ask`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ question: q })
+                    body: JSON.stringify({ doc_id: CURRENT_DOC_ID, question: q })
                 });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data?.detail || `HTTP ${res.status}`);
+                const d = await r.json();
+                if (!r.ok) throw d.detail;
 
-                const parsed = parseRagAnswer(data.answer || "");
-$("answerText").textContent = parsed.definition || "";
+                const parsed = parseAnswer(d.answer || "");
+                $("answerBox").textContent = parsed.answer;
+                $("answerBox").style.display = "block";
 
-renderSteps(parsed.steps);        // ✅ Steps cards
-renderSources(data.sources || []); // ✅ Sources cards
+                $("steps").innerHTML = parsed.steps.map(s => `• ${s}`).join("<br>");
+                $("stepsBox").style.display = parsed.steps.length ? "block" : "none";
 
-// default: həm steps, həm sources bağlı olsun
-$("stepsSection").style.display = "none";
-$("sourcesSection").style.display = "none";
-$("toggleSteps").textContent = "Show steps";
-$("toggleSources").textContent = "Show sources";
+                $("sources").innerHTML = (d.sources || []).map(
+                    s => `<div class="mono">#${s.id} (${s.score.toFixed(3)}) — ${s.source}<br>${s.text_preview}</div><hr>`
+                ).join("");
+                $("sourcesBox").style.display = d.sources?.length ? "block" : "none";
 
-$("answerWrap").style.display = "block";
-
-
-                toast("ok", "Answer Ready", "Response received with sources.");
             } catch (e) {
-                toast("bad", "Ask Failed", String(e));
+                toast("Ask failed: " + e);
             } finally {
-                $("btnAsk").disabled = false;
-                $("btnAsk").textContent = "Ask";
+                askBtn.disabled = false;
+                askBtn.textContent = askText;
             }
-        });
+        };
     </script>
 </body>
 
