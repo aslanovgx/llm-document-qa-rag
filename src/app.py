@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from src.config import settings
-from src.ingestion.loaders import load_text_from_path
+from src.ingestion.loaders import load_text_from_bytes
 from src.ingestion.chunker import chunk_text
 from src.embeddings.hf_embedder import HFEmbedder
 from src.vectorstore.schema import Chunk
@@ -92,8 +92,8 @@ def cleanup_sessions() -> None:
 # ------------------------------------------------------------------------------
 # Temp directory (only for reading PDFs via loader; deleted immediately)
 # ------------------------------------------------------------------------------
-RAW_DIR = Path("data/raw")
-RAW_DIR.mkdir(parents=True, exist_ok=True)
+# RAW_DIR = Path("data/raw")
+# RAW_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # ------------------------------------------------------------------------------
@@ -106,9 +106,6 @@ def health() -> Dict[str, str]:
 
 @app.post("/ingest")
 async def ingest(file: UploadFile = File(...)) -> Dict[str, Any]:
-    """
-    Upload PDF/TXT -> chunk -> embed -> build FAISS -> store in RAM -> return doc_id
-    """
     cleanup_sessions()
 
     if not file.filename:
@@ -118,24 +115,21 @@ async def ingest(file: UploadFile = File(...)) -> Dict[str, Any]:
     if suffix not in [".pdf", ".txt"]:
         raise HTTPException(status_code=400, detail="Only .pdf or .txt files are supported")
 
-    # Temp write because loader accepts a file path
-    tmp_path = RAW_DIR / f"tmp_{secrets.token_hex(8)}{suffix}"
-    tmp_path.write_bytes(await file.read())
+    file_bytes = await file.read()
 
-    try:
-        text = load_text_from_path(str(tmp_path))
-    finally:
-        # delete temp file (no persistence)
-        try:
-            tmp_path.unlink(missing_ok=True)
-        except Exception:
-            pass
+    text = load_text_from_bytes(
+        file_bytes=file_bytes,
+        filename=file.filename
+    )
 
     chunks_text = chunk_text(text, chunk_size=800, overlap=120)
     if not chunks_text:
         raise HTTPException(status_code=400, detail="No text extracted from file")
 
-    chunks = [Chunk(id=i, text=t, source=file.filename) for i, t in enumerate(chunks_text)]
+    chunks = [
+        Chunk(id=i, text=t, source=file.filename)
+        for i, t in enumerate(chunks_text)
+    ]
 
     embedder = HFEmbedder(settings.hf_model_name)
     embeddings = embedder.embed([c.text for c in chunks])
@@ -143,10 +137,18 @@ async def ingest(file: UploadFile = File(...)) -> Dict[str, Any]:
     index = build_faiss_index(embeddings)
 
     doc_id = secrets.token_hex(16)
-    SESSIONS[doc_id] = SessionState(index=index, chunks=chunks, created_at=time.time())
+    SESSIONS[doc_id] = SessionState(
+        index=index,
+        chunks=chunks,
+        created_at=time.time()
+    )
 
-    return {"status": "ok", "doc_id": doc_id, "file": file.filename, "chunks": len(chunks)}
-
+    return {
+        "status": "ok",
+        "doc_id": doc_id,
+        "file": file.filename,
+        "chunks": len(chunks),
+    }
 
 @app.post("/ask", response_model=AskResponse)
 def ask(payload: AskRequest) -> AskResponse:
